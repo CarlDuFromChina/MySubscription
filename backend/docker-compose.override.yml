@@ -1,0 +1,19 @@
+version: '3.8'
+
+# 本地开发覆盖配置
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5433:5432"  # 避免与本地 PostgreSQL 冲突
+
+  api:
+    environment:
+      NODE_ENV: development
+      DB_PASSWORD: dev_password
+      JWT_SECRET: dev-jwt-secret-for-local-development-only
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev

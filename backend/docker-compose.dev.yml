@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  db:
+    image: postgres:15-alpine
+    container_name: subscription-db-dev
+    environment:
+      POSTGRES_DB: subscription_manager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev_password
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - subscription-network-dev
+    restart: unless-stopped
+
+  # Node.js 后端服务（开发模式）
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: subscription-api-dev
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_USER: postgres
+      DB_PASSWORD: dev_password
+      DB_NAME: subscription_manager
+      DB_PORT: 5432
+      JWT_SECRET: dev-jwt-secret-key
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - subscription-network-dev
+    depends_on:
+      - db
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  subscription-network-dev:
+    driver: bridge
