@@ -1,0 +1,164 @@
+name: Manual Development Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+        - test
+        - debug
+        - full
+      target_platform:
+        description: 'Target platform'
+        required: false
+        default: 'current'
+        type: choice
+        options:
+        - current
+        - windows
+        - macos
+        - linux
+        - all
+
+env:
+  NODE_VERSION: '14'
+
+jobs:
+  # 代码质量检查
+  quality-check:
+    name: Development Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run lint (if available)
+      run: npm run lint || echo "No lint script found"
+      continue-on-error: true
+
+    - name: Check for security vulnerabilities
+      run: npm audit --audit-level=moderate || echo "Audit completed with issues"
+      continue-on-error: true
+
+    - name: Check Node.js version compatibility
+      run: node scripts/check-node-version.js
+
+  # 构建应用
+  build:
+    name: Development Build
+    needs: quality-check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Check Node.js version
+      run: node scripts/check-node-version.js
+
+    - name: Build renderer process
+      if: inputs.build_type != 'test'
+      run: npm run build:renderer || npm run build || echo "No build script found"
+
+    - name: Build for testing
+      if: inputs.build_type == 'test'
+      run: |
+        echo "🧪 Running test build..."
+        npm run pack:renderer || echo "No pack:renderer script"
+        npm run pack:main || echo "No pack:main script"
+
+    - name: Build Electron app (full build)
+      if: inputs.build_type == 'full'
+      run: npm run build:electron || npm run electron:build || echo "Building with basic electron-builder"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: development-build-${{ runner.os }}-${{ inputs.build_type }}
+        path: |
+          dist/
+          build/
+          out/
+        retention-days: 3
+
+  # 后端构建（如果需要）
+  backend-build:
+    name: Backend Development Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci
+
+    - name: Check Node.js version (backend)
+      working-directory: ./backend
+      run: node scripts/check-node-version.js
+
+    - name: Run backend tests
+      working-directory: ./backend
+      run: npm test
+
+    - name: Run backend linting
+      working-directory: ./backend
+      run: npm run lint
+
+  # 构建总结
+  summary:
+    name: Build Summary
+    needs: [quality-check, build, backend-build]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "## 🛠️ Development Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Type**: \`${{ inputs.build_type }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Target Platform**: \`${{ inputs.target_platform }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.js Version**: \`${{ env.NODE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered by**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build time**: \`$(date)\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
+          echo "❌ **Status**: Build failed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **Status**: Build successful" >> $GITHUB_STEP_SUMMARY
+        fi

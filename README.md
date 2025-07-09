@@ -6,9 +6,51 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ghcr.io/carlduformchina/mysubscription/subscription-manager-api)](https://github.com/CarlDuFromChina/MySubscription/pkgs/container/subscription-manager-api)
 
+## 📋 环境要求
+
+### Node.js 版本要求
+
+本项目需要使用 **Node.js 14.x** 才能正常运行和编译。
+
+#### 安装 Node.js 14.x
+
+**Windows 用户：**
+
+```powershell
+# 使用 nvm-windows
+nvm install 14.21.3
+nvm use 14.21.3
+
+# 或者直接下载安装
+# 访问：https://nodejs.org/download/release/v14.21.3/
+```
+
+**macOS/Linux 用户：**
+
+```bash
+# 使用 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 14.21.3
+nvm use 14.21.3
+
+# 设置为默认版本
+nvm alias default 14.21.3
+```
+
+#### 版本验证
+
+项目已配置自动版本检查，运行以下命令时会自动验证 Node.js 版本：
+
+```bash
+npm install  # 安装依赖前检查
+npm run dev  # 开发模式前检查
+npm run build # 构建前检查
+```
+
 ## ✨ 功能特性
 
 ### 📱 桌面应用（Electron）
+
 - 🖥️ **跨平台支持** - Windows、macOS、Linux
 - 🎨 **现代化 UI** - 基于 Element UI 的美观界面
 - 📊 **智能表格** - 原生筛选、排序、分页功能
@@ -16,6 +58,7 @@
 - 💾 **离线模式** - 本地数据存储，无网络也能使用
 
 ### 🌐 后端 API（Node.js）
+
 - 🚀 **RESTful API** - 完整的订阅数据 CRUD 操作
 - 🔐 **JWT 认证** - 安全的用户身份验证
 - 🗄️ **PostgreSQL** - 可靠的数据持久化
@@ -23,6 +66,7 @@
 - 🔒 **安全审计** - 自动安全扫描和依赖检查
 
 ### 🛠️ DevOps & 自动化
+
 - ⚡ **GitHub Actions** - CI/CD 自动化构建和发布
 - 🐳 **多架构 Docker** - 支持 AMD64 和 ARM64
 - 📦 **自动发布** - 桌面应用和 Docker 镜像自动构建

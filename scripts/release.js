@@ -128,20 +128,18 @@ class ReleaseManager {
       this.execCommand(`git add .`);
       this.execCommand(`git commit -m "chore: bump version to ${version}"`);
 
-      // 创建标签
-      this.execCommand(`git tag -a v${version} -m "Release version ${version}"`);
+      // 创建标签 - 根据新的 GitHub Actions 策略
+      // v* 标签触发后端 Docker 构建
+      this.execCommand(`git tag -a v${version} -m "Backend API version ${version}"`);
       
-      // 为后端创建单独的标签
-      this.execCommand(`git tag -a api-v${version} -m "Backend API version ${version}"`);
-      
-      // 为前端应用创建标签
+      // app-v* 标签触发前端 Electron 构建  
       this.execCommand(`git tag -a app-v${version} -m "Electron App version ${version}"`);
 
       this.log(`Release ${version} created successfully`, 'success');
       
       return {
         version,
-        tags: [`v${version}`, `api-v${version}`, `app-v${version}`]
+        tags: [`v${version}`, `app-v${version}`]
       };
     } catch (error) {
       this.log(`Release creation failed: ${error.message}`, 'error');
@@ -334,10 +332,16 @@ Options:
   --skip-docker   Skip Docker build
   --dry-run       Show what would be done without making changes
 
+Tags Created:
+  v{version}      - Triggers backend Docker build (GitHub Actions)
+  app-v{version}  - Triggers frontend Electron build (GitHub Actions)
+
 Examples:
   node scripts/release.js patch
   node scripts/release.js minor --skip-docker
   node scripts/release.js major --dry-run
+
+Note: This tool requires Node.js 14.x as specified in package.json
 `);
 
   manager.release(releaseType, options)

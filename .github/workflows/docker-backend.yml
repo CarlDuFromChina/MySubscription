@@ -2,20 +2,12 @@ name: Docker Build & Push
 
 on:
   push:
-    branches: [ main, develop ]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/auto-deploy.yml'
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'backend/**'
+    tags: [ 'v*' ]  # 只在创建 v* 标签时触发
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/subscription-manager-api
-  NODE_VERSION: '18'
+  NODE_VERSION: '14'
 
 jobs:
   # 代码质量检查

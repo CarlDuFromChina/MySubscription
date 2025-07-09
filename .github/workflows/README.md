@@ -1,23 +1,35 @@
-# GitHub Actions 工作流
+# GitHub Actions 配置总结
 
-本项目包含两个主要的 GitHub Actions 工作流，用于自动化构建和发布。
+本文档总结了 GitHub Actions workflows 的配置更改，确保使用 Node.js 14 并调整触发条件。
 
-## 工作流说明
+## 📁 Workflow 文件概览
 
-### 1. 后端 Docker 构建 (`docker-backend.yml`)
+### 1. `electron-build.yml` - Electron 应用构建和发布
+- **触发条件**: 只在创建 `app-v*` 标签时触发（如 `app-v1.0.0`）
+- **Node.js 版本**: 14
+- **功能**: 
+  - 代码质量检查
+  - 跨平台构建（Windows、macOS、Linux）
+  - 自动创建 GitHub Release
+  - 上传构建产物
 
-专门用于构建和推送后端 API 的 Docker 镜像。
+### 2. `docker-backend.yml` - Docker 镜像构建和推送
+- **触发条件**: 只在创建 `v*` 标签时触发（如 `v1.0.0`）
+- **Node.js 版本**: 14
+- **功能**:
+  - 后端代码测试和质量检查
+  - 多架构 Docker 镜像构建（AMD64、ARM64）
+  - 推送到 GitHub Container Registry
+  - 安全扫描
 
-**触发条件：**
-
-- 推送到 `main` 或 `develop` 分支（仅当 `backend/` 目录有变更时）
-- 创建 `v*` 标签
-- 针对 `main` 分支的 Pull Request
-
-**主要功能：**
-
-- 代码质量检查（linting）
-- 运行单元测试
+### 3. `manual-build.yml` - 手动开发构建
+- **触发条件**: 手动触发（workflow_dispatch）
+- **Node.js 版本**: 14
+- **功能**:
+  - 开发和测试用的构建
+  - 可选择构建类型（test、debug、full）
+  - 前端和后端质量检查
+  - 版本兼容性检查
 - 构建 Docker 镜像（支持 linux/amd64 和 linux/arm64）
 - 推送镜像到 GitHub Container Registry (ghcr.io)
 - 安全漏洞扫描

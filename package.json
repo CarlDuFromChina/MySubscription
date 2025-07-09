@@ -5,7 +5,14 @@
   "description": "An electron-vue project",
   "license": "MIT",
   "main": "./dist/electron/main.js",
+  "engines": {
+    "node": "14.x",
+    "npm": ">=6.0.0"
+  },
   "scripts": {
+    "preinstall": "node scripts/check-node-version.js",
+    "prebuild": "node scripts/check-node-version.js",
+    "predev": "node scripts/check-node-version.js",
     "build": "node .electron-vue/build.js && electron-builder",
     "build:dir": "node .electron-vue/build.js && electron-builder --dir",
     "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",

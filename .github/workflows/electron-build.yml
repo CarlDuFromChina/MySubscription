@@ -2,13 +2,10 @@ name: Electron App Build & Release
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'app-v*' ]
-  pull_request:
-    branches: [ main ]
+    tags: [ 'app-v*' ]  # 只在创建 app-v* 标签时触发
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '14'
 
 jobs:
   # 代码质量检查
@@ -188,44 +185,8 @@ jobs:
         asset_content_type: application/octet-stream
       continue-on-error: true
 
-  # 自动更新检查
-  update-check:
-    name: Auto Update Check
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Check for updates
-      run: |
-        echo "🔍 Checking for available updates..."
-        
-        # 检查依赖更新
-        npx npm-check-updates --errorLevel 2 || echo "Dependencies check completed"
-        
-        # 检查安全更新
-        npm audit --audit-level=high || echo "Security audit completed"
-        
-        echo "✅ Update check completed"
-
-  # 部署到测试环境
-  deploy-test:
-    name: Deploy to Test Environment
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    
-    steps:
-    - name: Deploy test version
-      run: |
-        echo "🚀 Deploying test version to internal testing environment"
-        
-        # 这里可以部署到内部测试服务器或云存储
-        # 例如上传到 S3、Azure Blob Storage 等
-        
-        echo "✅ Test deployment completed"
+  # 自动更新检查 - 只在主分支推送时运行，现在移除
+  # update-check 和 deploy-test job 已移除，因为现在只在 tag 时触发
 
   # 通知
   notify:
