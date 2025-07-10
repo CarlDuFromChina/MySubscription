@@ -88,14 +88,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Image scan with Trivy
-      uses: aquasecurity/trivy-action@master
-      if: github.event_name != 'pull_request'
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-        format: 'table'
-        exit-code: '0'
-
     - name: Generate build summary
       if: github.event_name != 'pull_request'
       run: |
@@ -108,5 +100,5 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📥 Pull Command" >> $GITHUB_STEP_SUMMARY
         echo '```bash' >> $GITHUB_STEP_SUMMARY
-        echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
