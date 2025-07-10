@@ -4,7 +4,7 @@ class StorageService {
     this.storageKey = 'subscription-data';
     this.userKey = 'user-info';
     this.syncEnabled = false;
-    this.apiBaseUrl = 'http://localhost:3000/api'; // 后端API地址
+    this.apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000/api'; // 后端API地址
   }
 
   // 获取用户信息

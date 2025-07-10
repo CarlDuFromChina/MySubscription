@@ -1,6 +1,6 @@
 # GitHub Actions 配置总结
 
-本文档总结了 GitHub Actions workflows 的配置更改，确保使用 Node.js 14 并调整触发条件。
+本文档总结了 GitHub Actions workflows 的配置，确保使用 Node.js 14 并优化构建流程。
 
 ## 📁 Workflow 文件概览
 
@@ -19,27 +19,29 @@
 - **功能**:
   - 后端代码测试和质量检查
   - 多架构 Docker 镜像构建（AMD64、ARM64）
-  - 推送到 GitHub Container Registry
-  - 安全扫描
-
-### 3. `manual-build.yml` - 手动开发构建
-- **触发条件**: 手动触发（workflow_dispatch）
-- **Node.js 版本**: 14
-- **功能**:
-  - 开发和测试用的构建
-  - 可选择构建类型（test、debug、full）
-  - 前端和后端质量检查
-  - 版本兼容性检查
-- 构建 Docker 镜像（支持 linux/amd64 和 linux/arm64）
-- 推送镜像到 GitHub Container Registry (ghcr.io)
-- 安全漏洞扫描
+  - 推送到 GitHub Container Registry (ghcr.io)
+  - 安全漏洞扫描
 
 **生成的镜像标签：**
 
-- `ghcr.io/owner/repo/subscription-manager-api:main` (main 分支)
-- `ghcr.io/owner/repo/subscription-manager-api:develop` (develop 分支)
 - `ghcr.io/owner/repo/subscription-manager-api:v1.0.0` (版本标签)
-- `ghcr.io/owner/repo/subscription-manager-api:latest` (main 分支的别名)
+- `ghcr.io/owner/repo/subscription-manager-api:latest` (最新版本别名)
+
+## 工作流程详细说明
+
+### 1. Docker 后端构建 (`docker-backend.yml`)
+
+用于构建和发布后端 API 服务的 Docker 镜像。
+
+**触发条件：**
+- 创建 `v*` 标签（如 `v1.0.0`）
+
+**主要功能：**
+
+- 后端代码测试和质量检查
+- 多架构 Docker 镜像构建（AMD64、ARM64）
+- 推送到 GitHub Container Registry (ghcr.io)
+- 安全漏洞扫描
 
 ### 2. Electron 应用构建 (`electron-build.yml`)
 
@@ -47,9 +49,7 @@
 
 **触发条件：**
 
-- 推送到 `main` 或 `develop` 分支
-- 创建 `app-v*` 标签
-- 针对 `main` 分支的 Pull Request
+- 创建 `app-v*` 标签（如 `app-v1.0.0`）
 
 **主要功能：**
 
@@ -59,32 +59,19 @@
 
 ## 使用指南
 
-### 构建后端 Docker 镜像
+### 发布后端服务
 
-**开发版本：**
-```bash
-git push origin develop
-```
+**创建后端版本：**
 
-**生产版本：**
-```bash
-git push origin main
-```
-
-**标签版本：**
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-### 构建 Electron 应用
+### 发布 Electron 应用
 
-**开发版本：**
-```bash
-git push origin develop  # 构建但不发布
-```
+**创建应用版本：**
 
-**应用发布：**
 ```bash
 git tag app-v1.0.0
 git push origin app-v1.0.0
@@ -100,9 +87,6 @@ docker pull ghcr.io/owner/repo/subscription-manager-api:latest
 
 # 特定版本
 docker pull ghcr.io/owner/repo/subscription-manager-api:v1.0.0
-
-# 开发版本
-docker pull ghcr.io/owner/repo/subscription-manager-api:develop
 ```
 
 ### 运行容器

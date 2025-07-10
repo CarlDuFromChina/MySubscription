@@ -72,11 +72,14 @@ jobs:
 
     - name: Build renderer process
       run: npm run build:renderer || npm run build || echo "No build script found"
+      env:
+        VUE_APP_API_BASE_URL: ${{ vars.VUE_APP_API_BASE_URL }}
 
     - name: Build Electron app
       run: npm run build:electron || npm run electron:build || echo "Building with basic electron-builder"
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VUE_APP_API_BASE_URL: ${{ vars.VUE_APP_API_BASE_URL }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

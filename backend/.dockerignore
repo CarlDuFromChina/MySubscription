@@ -32,7 +32,7 @@ coverage
 bower_components
 
 # 依赖锁定文件
-package-lock.json
+# package-lock.json  # 注释掉，Docker 构建需要此文件
 yarn.lock
 
 # IDE
