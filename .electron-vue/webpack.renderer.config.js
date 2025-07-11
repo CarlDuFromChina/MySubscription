@@ -2,6 +2,9 @@
 
 process.env.BABEL_ENV = 'renderer'
 
+// 加载环境变量
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') })
+
 const path = require('path')
 const { dependencies } = require('../package.json')
 const webpack = require('webpack')
@@ -159,7 +162,8 @@ if (process.env.NODE_ENV !== 'production') {
   rendererConfig.plugins.push(
     new webpack.HotModuleReplacementPlugin(),
     new webpack.DefinePlugin({
-      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
+      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`,
+      'process.env.VUE_APP_API_BASE_URL': JSON.stringify(process.env.VUE_APP_API_BASE_URL || '')
     })
   )
 }
@@ -180,7 +184,8 @@ if (process.env.NODE_ENV === 'production') {
       }
     ]),
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': '"production"'
+      'process.env.NODE_ENV': '"production"',
+      'process.env.VUE_APP_API_BASE_URL': JSON.stringify(process.env.VUE_APP_API_BASE_URL || '')
     }),
     new webpack.LoaderOptionsPlugin({
       minimize: true

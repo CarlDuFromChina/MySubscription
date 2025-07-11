@@ -2,6 +2,9 @@
 
 process.env.BABEL_ENV = 'web'
 
+// 加载环境变量
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') })
+
 const path = require('path')
 const webpack = require('webpack')
 
@@ -106,7 +109,8 @@ let webConfig = {
       nodeModules: false
     }),
     new webpack.DefinePlugin({
-      'process.env.IS_WEB': 'true'
+      'process.env.IS_WEB': 'true',
+      'process.env.VUE_APP_API_BASE_URL': JSON.stringify(process.env.VUE_APP_API_BASE_URL || '')
     }),
     new webpack.HotModuleReplacementPlugin(),
     new webpack.NoEmitOnErrorsPlugin()
@@ -141,7 +145,8 @@ if (process.env.NODE_ENV === 'production') {
       }
     ]),
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': '"production"'
+      'process.env.NODE_ENV': '"production"',
+      'process.env.VUE_APP_API_BASE_URL': JSON.stringify(process.env.VUE_APP_API_BASE_URL || '')
     }),
     new webpack.LoaderOptionsPlugin({
       minimize: true
