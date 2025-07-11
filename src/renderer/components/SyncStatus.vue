@@ -35,25 +35,10 @@
       </div>
       
       <div class="sync-status-content">
-        <div class="sync-indicator">
-          <el-tag 
-            :type="syncStatus.type" 
-            :icon="syncStatus.icon"
-            size="small">
-            {{ syncStatus.text }}
-          </el-tag>
-          <span class="last-sync" v-if="lastSyncTime">
+        <div class="last-sync-wrapper" v-if="lastSyncTime">
+          <span class="last-sync">
             上次同步: {{ formatTime(lastSyncTime) }}
           </span>
-        </div>
-        
-        <div class="sync-settings">
-          <el-switch
-            v-model="autoSyncEnabled"
-            active-text="自动同步"
-            inactive-text="手动同步"
-            @change="toggleAutoSync">
-          </el-switch>
         </div>
       </div>
     </el-card>
@@ -74,13 +59,8 @@ export default {
   data() {
     return {
       syncing: false,
-      autoSyncEnabled: true,
       lastSyncTime: null,
-      syncStatus: {
-        type: 'success',
-        icon: 'el-icon-check',
-        text: '已同步'
-      }
+      autoSyncTimer: null
     }
   },
   computed: {
@@ -107,12 +87,8 @@ export default {
           // 再下载服务器数据
           const downloadResult = await StorageService.syncFromServer();
           if (downloadResult.success) {
-            this.syncStatus = {
-              type: 'success',
-              icon: 'el-icon-check',
-              text: '同步成功'
-            };
             this.lastSyncTime = new Date();
+            localStorage.setItem('last-sync-time', this.lastSyncTime.toISOString());
             this.$message.success('数据同步成功');
             this.$emit('sync-success', downloadResult.subscriptions);
           } else {
@@ -122,25 +98,42 @@ export default {
           throw new Error(uploadResult.error);
         }
       } catch (error) {
-        this.syncStatus = {
-          type: 'danger',
-          icon: 'el-icon-error',
-          text: '同步失败'
-        };
         this.$message.error('同步失败: ' + error.message);
       } finally {
         this.syncing = false;
       }
     },
     
-    async toggleAutoSync(enabled) {
-      // 这里可以保存用户的自动同步偏好
-      localStorage.setItem('auto-sync-enabled', enabled.toString());
-      if (enabled) {
-        this.$message.info('已开启自动同步');
-      } else {
-        this.$message.info('已关闭自动同步');
+    // 自动同步方法
+    async autoSync() {
+      if (this.syncing) return; // 如果正在同步，跳过
+      
+      try {
+        const uploadResult = await StorageService.syncToServer();
+        if (uploadResult.success) {
+          const downloadResult = await StorageService.syncFromServer();
+          if (downloadResult.success) {
+            this.lastSyncTime = new Date();
+            localStorage.setItem('last-sync-time', this.lastSyncTime.toISOString());
+            this.$emit('sync-success', downloadResult.subscriptions);
+          }
+        }
+      } catch (error) {
+        console.error('自动同步失败:', error);
       }
+    },
+    
+    // 监听数据变化，延迟同步
+    triggerAutoSync() {
+      // 清除之前的定时器
+      if (this.autoSyncTimer) {
+        clearTimeout(this.autoSyncTimer);
+      }
+      
+      // 设置延迟同步，避免频繁同步
+      this.autoSyncTimer = setTimeout(() => {
+        this.autoSync();
+      }, 3000); // 3秒后自动同步
     },
     
     logout() {
@@ -156,27 +149,23 @@ export default {
     },
     
     updateSyncStatus() {
-      // 这里可以检查最后同步时间，判断同步状态
+      // 加载最后同步时间
       const savedTime = localStorage.getItem('last-sync-time');
       if (savedTime) {
         this.lastSyncTime = new Date(savedTime);
-        const timeDiff = Date.now() - this.lastSyncTime.getTime();
-        const hoursDiff = timeDiff / (1000 * 60 * 60);
-        
-        if (hoursDiff > 24) {
-          this.syncStatus = {
-            type: 'warning',
-            icon: 'el-icon-warning',
-            text: '需要同步'
-          };
-        }
       }
     },
     
     formatTime(time) {
       return time.toLocaleString('zh-CN');
     }
-  }
+  },
+  beforeDestroy() {
+    // 清理定时器
+    if (this.autoSyncTimer) {
+      clearTimeout(this.autoSyncTimer);
+    }
+  },
 }
 </script>
 
@@ -198,11 +187,11 @@ export default {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 
 .user-details {
   flex: 1;
+  margin-left: 12px;
 }
 
 .username {
@@ -223,23 +212,17 @@ export default {
 
 .sync-status-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
-.sync-indicator {
+.last-sync-wrapper {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
 }
 
 .last-sync {
   font-size: 12px;
   color: #8492a6;
-}
-
-.sync-settings {
-  display: flex;
-  align-items: center;
 }
 </style>

@@ -12,6 +12,7 @@
       <!-- 同步状态卡片 (仅在已认证时显示) -->
       <sync-status 
         v-if="isAuthenticated && currentUser"
+        ref="syncStatus"
         :user="currentUser"
         @sync-success="handleSyncSuccess"
         @logout="handleLogout">
@@ -20,18 +21,13 @@
       <!-- 本地模式提示 -->
       <el-alert
         v-if="localMode"
-        title="本地模式"
-        description="您正在使用本地模式，数据仅保存在本设备。如需多设备同步，请登录账号。"
         type="info"
         :closable="false"
         style="margin-bottom: 20px;">
-        <el-button 
-          slot="title" 
-          type="text" 
-          @click="showLogin"
-          style="float: right; margin-top: -2px;">
-          立即登录
-        </el-button>
+        <div slot="title" class="local-mode-title">
+          <span>本地模式</span>
+        </div>
+        <div>您正在使用本地模式，数据仅保存在本设备。如需多设备同步，请<span class="login-link" @click="showLogin">登录</span>账号。</div>
       </el-alert>
       
       <!-- 统计卡片 -->
@@ -121,7 +117,7 @@
         <el-table-column prop="project" label="项目" min-width="120"></el-table-column>
         <el-table-column prop="expireDate" label="到期时间" min-width="120">
           <template slot-scope="scope">
-            <span>{{ scope.row.expireDate || '/' }}</span>
+            <span>{{ formatDate(scope.row.expireDate) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="cost" label="费用" min-width="80"></el-table-column>
@@ -410,6 +406,17 @@ export default {
       localStorage.setItem('local-mode-enabled', 'true');
       this.$message.info('已退出登录，切换到本地模式');
     },
+    // 格式化日期
+    formatDate(date) {
+      if (!date) return '/';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '/';
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
+
     // 续费模式筛选
     filterRenewalMode(value, row) {
       return row.renewalMode === value;
@@ -435,98 +442,7 @@ export default {
         this.subscriptions = stored;
       } else {
         // 如果没有存储数据，使用默认数据
-        this.subscriptions = [
-          {
-            product: 'QQ音乐',
-            project: '豪华绿钻',
-            expireDate: '2025-07-04',
-            cost: 100,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '山姆会员',
-            project: '卓越卡',
-            expireDate: '2025-08-31',
-            cost: 680,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '网易云音乐',
-            project: '黑胶会员',
-            expireDate: '2025-10-01',
-            cost: 0,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '肯德基会员',
-            project: '大神卡',
-            expireDate: '2025-06-18',
-            cost: 88,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '泡芙云',
-            project: '轻量泡芙',
-            expireDate: '2025-11-08',
-            cost: 91,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '淘宝会员',
-            project: '88vip',
-            expireDate: '2025-07-21',
-            cost: 88,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '爱奇艺',
-            project: '黄金会员',
-            expireDate: '2026-04-28',
-            cost: 130,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: '美国电话卡',
-            project: '小紫卡',
-            expireDate: '',
-            cost: 3,
-            currency: 'USD',
-            period: '月',
-            renewalMode: '自动续费'
-          },
-          {
-            product: '百度网盘',
-            project: 'SVIP',
-            expireDate: '2025-11-27',
-            cost: 176,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          },
-          {
-            product: 'ToDesk',
-            project: 'Plus',
-            expireDate: '2025-06-11',
-            cost: 108,
-            currency: 'CNY',
-            period: '年',
-            renewalMode: '手动'
-          }
-        ];
+        this.subscriptions = [];
         this.saveData();
       }
     },
@@ -534,6 +450,10 @@ export default {
     // 保存数据
     saveData() {
       StorageService.saveSubscriptions(this.subscriptions);
+      // 如果已认证且有同步组件，触发自动同步
+      if (this.isAuthenticated && this.$refs.syncStatus) {
+        this.$refs.syncStatus.triggerAutoSync();
+      }
     },
 
     // 导出数据
@@ -689,21 +609,23 @@ export default {
   min-height: 100vh;
 }
 
-/* 头部卡片 */
-.header-card {
-  margin-bottom: 20px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-title {
-  font-size: 24px;
+/* 本地模式提示样式 */
+.local-mode-title span {
   font-weight: 600;
-  color: #2c3e50;
+  font-size: 14px;
+}
+
+.login-link {
+  color: #409EFF;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500 !important;
+  transition: color 0.3s;
+}
+
+.login-link:hover {
+  color: #66b1ff;
+  text-decoration: underline;
 }
 
 /* 头部卡片 */
