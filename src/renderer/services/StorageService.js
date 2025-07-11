@@ -217,6 +217,74 @@ class StorageService {
       reader.readAsText(file);
     });
   }
+
+  // 使用 Electron 原生对话框导入数据
+  async importDataElectron() {
+    if (typeof window.require === 'function') {
+      try {
+        // 使用 remote 方式（Electron）
+        const { remote } = window.require('electron');
+        if (!remote) {
+          throw new Error('Electron remote 模块不可用');
+        }
+        
+        const dialog = remote.dialog;
+        const fs = window.require('fs');
+        
+        const result = await dialog.showOpenDialog(remote.getCurrentWindow(), {
+          properties: ['openFile'],
+          filters: [
+            { name: 'JSON Files', extensions: ['json'] }
+          ]
+        });
+
+        console.log('Dialog result:', result);
+
+        // 处理不同版本的返回格式
+        let filePaths;
+        if (result.canceled) {
+          return null; // 用户取消了选择
+        }
+        
+        if (result.filePaths) {
+          filePaths = result.filePaths;
+        } else if (Array.isArray(result)) {
+          filePaths = result; // 旧版本直接返回文件路径数组
+        } else {
+          throw new Error('无法获取文件路径');
+        }
+
+        if (!filePaths || filePaths.length === 0) {
+          return null;
+        }
+
+        const filePath = filePaths[0];
+        console.log('读取文件:', filePath);
+        
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        console.log('文件内容长度:', fileContent.length);
+        
+        if (!fileContent.trim()) {
+          throw new Error('文件内容为空');
+        }
+        
+        const subscriptions = JSON.parse(fileContent);
+        console.log('解析后的数据:', subscriptions);
+        
+        if (!Array.isArray(subscriptions)) {
+          throw new Error('文件内容不是有效的数组格式');
+        }
+        
+        return subscriptions;
+        
+      } catch (error) {
+        console.error('Electron 导入错误:', error);
+        throw new Error(`文件读取或解析失败: ${error.message}`);
+      }
+    } else {
+      throw new Error('Electron 环境不可用');
+    }
+  }
 }
 
 export default new StorageService();

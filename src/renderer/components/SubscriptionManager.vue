@@ -102,8 +102,7 @@
             <el-button type="success" icon="el-icon-download" circle @click="exportData"></el-button>
           </el-tooltip>
           <el-tooltip content="导入数据" placement="top">
-            <el-button type="info" icon="el-icon-upload2" circle @click="$refs.fileInput.click()"></el-button>
-            <input type="file" ref="fileInput" @change="importData" accept=".json" style="display: none;">
+            <el-button type="info" icon="el-icon-upload2" circle @click="triggerFileInput"></el-button>
           </el-tooltip>
           <el-tooltip content="添加订阅" placement="top">
             <el-button type="primary" icon="el-icon-plus" circle @click="showAddDialog = true">
@@ -337,6 +336,42 @@ export default {
     this.checkFirstTimeUser();
   },
   methods: {
+    // 触发文件输入
+    triggerFileInput() {
+      this.importDataElectron();
+    },
+
+    // 使用 Electron 原生对话框导入
+    async importDataElectron() {
+      try {
+        this.$message.info('正在打开文件选择器...');
+        const subscriptions = await StorageService.importDataElectron();
+        
+        if (subscriptions === null) {
+          // 用户取消了文件选择
+          console.log('用户取消了文件选择');
+          return;
+        }
+        
+        if (!Array.isArray(subscriptions)) {
+          throw new Error('导入的数据格式不正确，应该是数组格式');
+        }
+        
+        if (subscriptions.length === 0) {
+          this.$message.warning('导入的文件中没有有效的订阅数据');
+          return;
+        }
+        
+        this.subscriptions = subscriptions;
+        this.saveData();
+        this.$message.success(`数据导入成功！共导入 ${subscriptions.length} 条订阅记录`);
+        console.log('导入成功:', subscriptions);
+      } catch (error) {
+        console.error('Electron 导入失败:', error);
+        this.$message.error('数据导入失败：' + error.message);
+      }
+    },
+
     // 检查认证状态
     checkAuthStatus() {
       const user = StorageService.getUserInfo();
@@ -459,20 +494,6 @@ export default {
     // 导出数据
     exportData() {
       StorageService.exportData();
-    },
-
-    // 导入数据
-    async importData(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      try {
-        const subscriptions = await StorageService.importData(file);
-        this.subscriptions = subscriptions;
-        this.$message.success('数据导入成功！');
-      } catch (error) {
-        this.$message.error('数据导入失败：' + error.message);
-      }
     },
 
     convertToRMB(amount, currency) {
