@@ -1,4 +1,4 @@
-# 📋 MySubscription
+# 📋 订阅簿
 
 > 一个基于 Electron + Vue.js 的现代化订阅管理桌面应用，支持本地存储和云端同步
 

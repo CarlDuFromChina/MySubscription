@@ -2,7 +2,7 @@
   "name": "my-subscription",
   "version": "0.0.1",
   "author": "Karl Du <48907733+CarlDuFromChina@users.noreply.github.com>",
-  "description": "An electron-vue project",
+  "description": "订阅簿 - 一个基于 Electron Vue 的订阅管理应用",
   "license": "MIT",
   "main": "./dist/electron/main.js",
   "engines": {
@@ -40,8 +40,8 @@
     "status": "node scripts/monitor.js"
   },
   "build": {
-    "productName": "my-subscription",
-    "appId": "com.example.yourapp",
+    "productName": "订阅簿",
+    "appId": "io.github.karldu.my-subscription",
     "directories": {
       "output": "build"
     },

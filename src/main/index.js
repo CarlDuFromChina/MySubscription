@@ -23,7 +23,8 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     height: 700,
     useContentSize: true,
-    width: 1200
+    width: 1200,
+    title: '订阅簿'
   })
 
   mainWindow.loadURL(winURL)

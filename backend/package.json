@@ -1,7 +1,7 @@
 {
   "name": "subscription-manager-backend",
   "version": "1.0.0",
-  "description": "Backend API for subscription manager",
+  "description": "订阅簿后端API服务",
   "main": "server.js",
   "engines": {
     "node": "14.x",
