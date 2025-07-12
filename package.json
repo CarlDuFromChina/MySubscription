@@ -13,7 +13,10 @@
     "preinstall": "node scripts/check-node-version.js",
     "prebuild": "node scripts/check-node-version.js",
     "predev": "node scripts/check-node-version.js",
-    "build": "node .electron-vue/build.js && electron-builder",
+    "build": "npm run build:zip",
+    "build:zip": "node .electron-vue/build.js && electron-builder --config.mac.identity=null --config.mac.target=zip",
+    "build:dmg": "npm run build:dir && ./scripts/create-dmg.sh",
+    "build:all": "npm run build:zip && npm run build:dmg",
     "build:dir": "node .electron-vue/build.js && electron-builder --dir",
     "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
     "build:web": "cross-env BUILD_TARGET=web node .electron-vue/build.js",
@@ -49,22 +52,13 @@
       "dist/electron/**/*"
     ],
     "dmg": {
-      "contents": [
-        {
-          "x": 410,
-          "y": 150,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 130,
-          "y": 150,
-          "type": "file"
-        }
-      ]
+      "background": null,
+      "format": "ULFO"
     },
     "mac": {
-      "icon": "build/icons/icon.icns"
+      "icon": "build/icons/icon.icns",
+      "identity": null,
+      "gatekeeperAssess": false
     },
     "win": {
       "icon": "build/icons/icon.ico"
