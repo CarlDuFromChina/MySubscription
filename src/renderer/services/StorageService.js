@@ -36,6 +36,13 @@ class StorageService {
     this.syncEnabled = false;
   }
 
+  // 清除本地数据（登出时使用）
+  clearLocalData() {
+    localStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.userKey);
+    this.syncEnabled = false;
+  }
+
   // 用户注册
   async register(email, password, username) {
     try {
@@ -137,7 +144,8 @@ class StorageService {
       const data = await response.json();
       
       if (response.ok) {
-        this.saveSubscriptions(data.subscriptions);
+        // 从服务器同步数据时，直接保存到本地，不触发自动同步
+        localStorage.setItem(this.storageKey, JSON.stringify(data.subscriptions));
         return { success: true, subscriptions: data.subscriptions };
       } else {
         return { success: false, error: data.message };

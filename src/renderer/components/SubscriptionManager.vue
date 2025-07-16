@@ -321,13 +321,13 @@ export default {
       this.dialogVisible = val;
     }
   },
-  mounted() {
+  async mounted() {
     // 检查是否已登录
     this.checkAuthStatus();
     
-    // 如果已认证或者是本地模式，加载数据
+    // 根据登录状态加载数据
     if (this.isAuthenticated || this.localMode) {
-      this.loadData();
+      await this.loadDataByAuthStatus();
       // 启动定期检查
       NotificationService.startPeriodicCheck(this.subscriptions);
     }
@@ -363,7 +363,8 @@ export default {
         }
         
         this.subscriptions = subscriptions;
-        this.saveData();
+        // 根据登录状态保存数据
+        await this.saveDataByAuthStatus();
         this.$message.success(`数据导入成功！共导入 ${subscriptions.length} 条订阅记录`);
         console.log('导入成功:', subscriptions);
       } catch (error) {
@@ -401,21 +402,26 @@ export default {
     },
     
     // 认证成功处理
-    handleAuthSuccess(user) {
+    async handleAuthSuccess(user) {
+      // 先清空当前数据，避免重复
+      this.subscriptions = [];
+      
       this.isAuthenticated = true;
       this.currentUser = user;
       this.localMode = false;
       localStorage.removeItem('local-mode-enabled');
-      this.loadData();
+      
+      // 登录成功后从服务器加载最新数据
+      await this.loadDataByAuthStatus();
       // 启动定期检查
       NotificationService.startPeriodicCheck(this.subscriptions);
     },
     
     // 跳过认证，使用本地模式
-    handleSkipAuth() {
+    async handleSkipAuth() {
       this.localMode = true;
       localStorage.setItem('local-mode-enabled', 'true');
-      this.loadData();
+      await this.loadDataByAuthStatus();
       // 启动定期检查
       NotificationService.startPeriodicCheck(this.subscriptions);
       this.$message.info('已进入本地模式，数据仅保存在本设备');
@@ -438,8 +444,13 @@ export default {
       this.isAuthenticated = false;
       this.currentUser = null;
       this.localMode = true;
+      
+      // 清空本地缓存数据
+      this.subscriptions = [];
+      StorageService.clearLocalData();
+      
       localStorage.setItem('local-mode-enabled', 'true');
-      this.$message.info('已退出登录，切换到本地模式');
+      this.$message.info('已退出登录，本地数据已清空，切换到本地模式');
     },
     // 格式化日期
     formatDate(date) {
@@ -471,29 +482,83 @@ export default {
       return 'active';
     },
     // 加载数据
-    loadData() {
+    async loadData() {
       const stored = StorageService.getSubscriptions();
       if (stored.length > 0) {
         this.subscriptions = stored;
       } else {
         // 如果没有存储数据，使用默认数据
         this.subscriptions = [];
-        this.saveData();
+        // 根据登录状态保存数据
+        await this.saveDataByAuthStatus();
       }
     },
 
-    // 保存数据
-    saveData() {
-      StorageService.saveSubscriptions(this.subscriptions);
-      // 如果已认证且有同步组件，触发自动同步
-      if (this.isAuthenticated && this.$refs.syncStatus) {
-        this.$refs.syncStatus.triggerAutoSync();
+    // 加载远程数据
+    async loadRemoteData() {
+      try {
+        // 显示加载提示
+        const loading = this.$loading({
+          lock: true,
+          text: '正在同步远程数据...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
+
+        // 从服务器同步数据
+        const result = await StorageService.syncFromServer();
+        
+        if (result.success) {
+          // 更新本地数据
+          this.subscriptions = result.subscriptions || [];
+          console.log('远程数据同步成功，共加载', this.subscriptions.length, '条订阅记录');
+        } else {
+          // 同步失败，回退到本地数据
+          console.warn('远程数据同步失败:', result.error);
+          this.$message.warning('远程数据同步失败，使用本地数据: ' + result.error);
+          this.loadData(); // 作为备选方案加载本地数据
+        }
+        
+        loading.close();
+      } catch (error) {
+        // 网络错误或其他异常，回退到本地数据
+        console.error('远程数据加载出错:', error);
+        this.$message.warning('无法连接到服务器，使用本地数据');
+        this.loadData(); // 作为备选方案加载本地数据
       }
+    },
+
+    // 保存数据（兼容性方法，内部调用统一方法）
+    async saveData() {
+      await this.saveDataByAuthStatus();
     },
 
     // 导出数据
-    exportData() {
-      StorageService.exportData();
+    async exportData() {
+      if (this.isAuthenticated) {
+        // 已登录用户：导出最新的远程数据
+        try {
+          // 先从服务器获取最新数据
+          const result = await StorageService.syncFromServer();
+          if (result.success) {
+            // 使用服务器数据导出
+            this.subscriptions = result.subscriptions || [];
+            StorageService.exportData();
+            this.$message.success('已导出最新的服务器数据');
+          } else {
+            // 服务器同步失败，使用本地数据导出
+            StorageService.exportData();
+            this.$message.warning('无法获取服务器数据，已导出本地数据: ' + result.error);
+          }
+        } catch (error) {
+          // 网络错误，使用本地数据导出
+          StorageService.exportData();
+          this.$message.warning('无法连接服务器，已导出本地数据');
+        }
+      } else {
+        // 本地模式：直接导出本地数据
+        StorageService.exportData();
+      }
     },
 
     convertToRMB(amount, currency) {
@@ -548,14 +613,8 @@ export default {
       this.editingIndex = index;
       this.currentSubscription = { ...this.subscriptions[index] };
     },
-    deleteSubscription(index) {
-      if (confirm('确定要删除这个订阅吗？')) {
-        this.subscriptions.splice(index, 1);
-        this.saveData(); // 保存到本地存储
-      }
-    },
     saveSubscription() {
-      this.$refs.subscriptionForm.validate((valid) => {
+      this.$refs.subscriptionForm.validate(async (valid) => {
         if (valid) {
           if (this.editingIndex !== -1) {
             this.subscriptions[this.editingIndex] = { ...this.currentSubscription };
@@ -564,7 +623,8 @@ export default {
             this.subscriptions.push({ ...this.currentSubscription });
             this.$message.success('订阅已添加');
           }
-          this.saveData(); // 保存到本地存储
+          // 根据登录状态保存数据
+          await this.saveDataByAuthStatus();
           this.closeDialog();
         } else {
           this.$message.error('请填写完整信息');
@@ -603,9 +663,10 @@ export default {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
+      }).then(async () => {
         this.subscriptions.splice(index, 1);
-        this.saveData();
+        // 根据登录状态保存数据
+        await this.saveDataByAuthStatus();
         this.$message.success('删除成功');
       }).catch(() => {
         this.$message.info('已取消删除');
@@ -618,6 +679,43 @@ export default {
       if (this.isExpired(expireDate)) return 'danger';
       if (this.isExpiringSoon(expireDate)) return 'warning';
       return 'success';
+    },
+
+    // 统一的数据加载方法（根据登录状态选择数据源）
+    async loadDataByAuthStatus() {
+      if (this.isAuthenticated) {
+        // 已登录：从远程加载数据
+        await this.loadRemoteData();
+      } else {
+        // 本地模式：从本地加载数据
+        this.loadData();
+      }
+    },
+
+    // 统一的数据保存方法（根据登录状态选择保存方式）
+    async saveDataByAuthStatus() {
+      if (this.isAuthenticated) {
+        // 已登录：保存到远程服务器（会自动同步到本地）
+        try {
+          const result = await StorageService.syncToServer();
+          if (result.success) {
+            // 同步成功后更新本地缓存
+            StorageService.saveSubscriptions(this.subscriptions);
+            console.log('数据已同步到服务器');
+          } else {
+            // 同步失败，保存到本地作为备份
+            StorageService.saveSubscriptions(this.subscriptions);
+            this.$message.warning('同步服务器失败，已保存到本地: ' + result.error);
+          }
+        } catch (error) {
+          // 网络错误，保存到本地作为备份
+          StorageService.saveSubscriptions(this.subscriptions);
+          this.$message.warning('无法连接服务器，已保存到本地');
+        }
+      } else {
+        // 本地模式：只保存到本地
+        StorageService.saveSubscriptions(this.subscriptions);
+      }
     },
   }
 }
