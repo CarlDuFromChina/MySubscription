@@ -111,7 +111,7 @@
         </div>
       </div>
 
-      <el-table :data="subscriptions" style="width: 100%;" stripe>
+      <el-table :data="subscriptions" :key="tableKey" style="width: 100%;" stripe>
         <el-table-column prop="product" label="产品" min-width="120"></el-table-column>
         <el-table-column prop="project" label="项目" min-width="120"></el-table-column>
         <el-table-column prop="expireDate" label="到期时间" min-width="120">
@@ -261,6 +261,7 @@ export default {
       
       // UI 相关
       showHelp: false,
+      tableKey: 0, // 用于强制刷新 table
       
       // 原有数据
       subscriptions: [],
@@ -505,9 +506,11 @@ export default {
           background: 'rgba(0, 0, 0, 0.7)'
         });
 
+        // 记录开始时间
+        const start = Date.now();
         // 从服务器同步数据
         const result = await StorageService.syncFromServer();
-        
+
         if (result.success) {
           // 更新本地数据
           this.subscriptions = result.subscriptions || [];
@@ -518,7 +521,12 @@ export default {
           this.$message.warning('远程数据同步失败，使用本地数据: ' + result.error);
           this.loadData(); // 作为备选方案加载本地数据
         }
-        
+
+        // 计算已用时间，保证 loading 至少显示 500ms
+        const elapsed = Date.now() - start;
+        if (elapsed < 500) {
+          await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+        }
         loading.close();
       } catch (error) {
         // 网络错误或其他异常，回退到本地数据
@@ -716,6 +724,13 @@ export default {
         // 本地模式：只保存到本地
         StorageService.saveSubscriptions(this.subscriptions);
       }
+      // 强制刷新 Table，确保界面立即更新
+      this.$nextTick(() => {
+        // 触发数组的响应式更新
+        this.subscriptions = [...this.subscriptions];
+        // 强制重新渲染表格
+        this.tableKey += 1;
+      });
     },
   }
 }
